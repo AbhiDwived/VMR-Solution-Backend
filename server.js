@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const db = require('./src/config/db');
 
@@ -11,12 +12,18 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Basic Route
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to VMR Solution Backend API' });
+});
+
+// Unauthorized endpoint
+app.get('/unauthorized', (req, res) => {
+    res.status(401).json({ message: 'Unauthorized access' });
 });
 
 // Routes
