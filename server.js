@@ -29,9 +29,11 @@ app.get('/unauthorized', (req, res) => {
 // Routes
 const authRoutes = require('./src/routes/authRoutes');
 const protectedRoutes = require('./src/routes/protectedRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
+app.use('/api/admin', adminRoutes);
 
 
 // Start Server
