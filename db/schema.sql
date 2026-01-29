@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS products (
     long_description TEXT,
     materials VARCHAR(255),
     care_instructions TEXT,
-    specifications TEXT,
+    specifications JSON,
     additional_info TEXT,
     weight DECIMAL(10,2) DEFAULT 0,
     warranty VARCHAR(255),

@@ -1,9 +1,40 @@
 const db = require('../config/db');
 
+const processVariants = (productData) => {
+  if (productData.colors && productData.sizes && productData.colors.length > 0 && productData.sizes.length > 0) {
+    const stockPerVariant = Math.floor(productData.stockQuantity / (productData.colors.length * productData.sizes.length));
+
+    return productData.colors.flatMap(color =>
+      productData.sizes.map(size => {
+        const colorName = color.startsWith('#') ? `Color-${color.slice(1)}` : color;
+        const variantId = `${productData.slug}-${color.replace('#', '')}-${size}`;
+
+        // Find matching variant images from the variants array
+        const variantImageSet = productData.variants?.find(v => 
+          v.color === color && v.size === size
+        );
+
+        return {
+          variantId,
+          sku: variantId,
+          color: {
+            name: colorName,
+            code: color
+          },
+          size,
+          price: productData.discountPrice || productData.price,
+          stock: stockPerVariant,
+          images: variantImageSet?.images || productData.productImages || []
+        };
+      })
+    );
+  }
+  return [];
+};
+
 const addProduct = async (req, res) => {
   try {
     const productData = req.body;
-    console.log('Received product data:', productData);
 
     // Validate required fields
     const requiredFields = ['name', 'description', 'price', 'discountPrice', 'stockQuantity', 'category'];
@@ -16,22 +47,9 @@ const addProduct = async (req, res) => {
       });
     }
 
-    // Process variants
-    let processedVariants = [];
-    if (productData.colors && productData.sizes && productData.colors.length > 0 && productData.sizes.length > 0) {
-      processedVariants = productData.colors.flatMap(color =>
-        productData.sizes.map(size => ({
-          sku: `${productData.slug}-${color.replace('#', '')}-${size}`,
-          color,
-          size,
-          stock: productData.stockQuantity || 0,
-          price: productData.price || 0,
-          images: productData.productImages || []
-        }))
-      );
-    }
+    const processedVariants = processVariants(productData);
 
-    // Try to save to database, fallback to memory if DB fails
+    // Try to save to database
     let finalProductData;
     try {
       const insertQuery = `
@@ -48,7 +66,7 @@ const addProduct = async (req, res) => {
       const values = [
         productData.name, productData.slug, productData.description,
         productData.longDescription || null, productData.materials || null,
-        productData.careInstructions || null, productData.specifications || null,
+        productData.careInstructions || null, JSON.stringify(productData.specifications || []),
         productData.additionalInfo || null, Number(productData.weight) || 0,
         productData.warranty || null, productData.adminEmail || null,
         productData.adminName || 'Admin User', productData.adminNumber || '1234567890',
@@ -76,17 +94,12 @@ const addProduct = async (req, res) => {
         createdAt: new Date().toISOString(),
         status: 'active'
       };
-
-      console.log('Product saved to database with ID:', result.insertId);
     } catch (dbError) {
-      // console.log('Database not available, using memory storage:', dbError.message);
-      finalProductData = {
-        id: Date.now(),
-        ...productData,
-        variants: processedVariants,
-        createdAt: new Date().toISOString(),
-        status: 'active'
-      };
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection failed. Please ensure MySQL is running and the database exists.',
+        error: dbError.message
+      });
     }
 
     res.status(200).json({
@@ -95,10 +108,60 @@ const addProduct = async (req, res) => {
       data: finalProductData
     });
   } catch (error) {
-    console.error('Error adding product:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to add product',
+      error: error.message
+    });
+  }
+};
+
+const getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    try {
+      const [rows] = await db.execute('SELECT * FROM products WHERE id = ?', [id]);
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found'
+        });
+      }
+
+      const product = rows[0];
+      
+      // Parse JSON fields
+      try {
+        product.product_images = JSON.parse(product.product_images || '[]');
+        product.colors = JSON.parse(product.colors || '[]');
+        product.sizes = JSON.parse(product.sizes || '[]');
+        product.variants = JSON.parse(product.variants || '[]');
+        product.specifications = JSON.parse(product.specifications || '[]');
+        product.features = JSON.parse(product.features || '[]');
+        product.tags = JSON.parse(product.tags || '[]');
+        product.delivery_charges = JSON.parse(product.delivery_charges || '[]');
+      } catch (parseError) {
+        console.error('Error parsing JSON fields:', parseError);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Product retrieved successfully',
+        data: product
+      });
+    } catch (dbError) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection failed. Please ensure MySQL is running and the database exists.',
+        error: dbError.message
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch product',
       error: error.message
     });
   }
@@ -114,7 +177,6 @@ const getAllProducts = async (req, res) => {
       data: rows
     });
   } catch (error) {
-    console.error('Error fetching products:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch products',
@@ -163,35 +225,50 @@ const updateProduct = async (req, res) => {
     const { id } = req.params;
     const productData = req.body;
 
-    console.log('Updating product:', id, productData);
+    // Validate required fields
+    const requiredFields = ['name', 'description', 'price', 'discountPrice', 'stockQuantity', 'category'];
+    const missingFields = requiredFields.filter(field => !productData[field]);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Missing required fields: ${missingFields.join(', ')}`
+      });
+    }
+
+    const processedVariants = processVariants(productData);
 
     try {
       const updateQuery = `
         UPDATE products SET 
           name = ?, slug = ?, description = ?, long_description = ?, materials = ?, 
           care_instructions = ?, specifications = ?, additional_info = ?, weight = ?, 
-          warranty = ?, price = ?, discount_price = ?, stock_quantity = ?, 
+          warranty = ?, admin_email = ?, admin_name = ?, admin_number = ?,
+          price = ?, discount_price = ?, stock_quantity = ?, 
           category = ?, brand = ?, video_url = ?, type = ?, affiliate_link = ?, 
           product_images = ?, tags = ?, colors = ?, sizes = ?, features = ?, 
-          delivery_charges = ?, default_delivery_charge = ?, is_featured = ?, 
-          is_new_arrival = ?, status = ?
+          variants = ?, delivery_charges = ?, default_delivery_charge = ?, 
+          is_featured = ?, is_new_arrival = ?, status = ?
         WHERE id = ?
       `;
 
       const values = [
         productData.name, productData.slug, productData.description,
         productData.longDescription || null, productData.materials || null,
-        productData.careInstructions || null, productData.specifications || null,
+        productData.careInstructions || null, JSON.stringify(productData.specifications || []),
         productData.additionalInfo || null, Number(productData.weight) || 0,
-        productData.warranty || null, Number(productData.price),
-        Number(productData.discountPrice), Number(productData.stockQuantity),
-        productData.category, productData.brand || null, productData.videoUrl || null,
+        productData.warranty || null, productData.adminEmail || null,
+        productData.adminName || null, productData.adminNumber || null,
+        Number(productData.price), Number(productData.discountPrice),
+        Number(productData.stockQuantity), productData.category,
+        productData.brand || null, productData.videoUrl || null,
         productData.type || 'own', productData.affiliateLink || null,
         JSON.stringify(productData.productImages || []),
         JSON.stringify(productData.tags || []),
         JSON.stringify(productData.colors || []),
         JSON.stringify(productData.sizes || []),
         JSON.stringify(productData.features || []),
+        JSON.stringify(processedVariants),
         JSON.stringify(productData.deliveryCharges || []),
         Number(productData.defaultDeliveryCharge) || 0,
         productData.isFeatured || false, productData.isNewArrival || false,
@@ -207,22 +284,40 @@ const updateProduct = async (req, res) => {
           message: 'Product not found'
         });
       }
-
+      
+      const responseData = { id, ...productData, variants: processedVariants };
+      
       res.status(200).json({
         success: true,
         message: 'Product updated successfully',
-        data: { id, ...productData }
+        data: responseData
       });
     } catch (dbError) {
-      console.error('Database update error:', dbError);
+      // Check if it's a connection error
+      if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ER_ACCESS_DENIED_ERROR') {
+        return res.status(500).json({
+          success: false,
+          message: 'Database connection failed. Please check database server.',
+          error: dbError.message
+        });
+      }
+      
+      // Check for constraint violations
+      if (dbError.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({
+          success: false,
+          message: 'Duplicate entry. Product with this slug may already exist.',
+          error: dbError.message
+        });
+      }
+      
       res.status(200).json({
         success: true,
         message: 'Product updated (memory fallback)',
-        data: { id, ...productData }
+        data: { id, ...productData, variants: processedVariants }
       });
     }
   } catch (error) {
-    console.error('Error updating product:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update product',
@@ -234,6 +329,7 @@ const updateProduct = async (req, res) => {
 module.exports = {
   addProduct,
   getAllProducts,
+  getProductById,
   updateProduct,
   deleteProduct
 };
