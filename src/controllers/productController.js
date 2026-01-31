@@ -167,6 +167,57 @@ const getProductById = async (req, res) => {
   }
 };
 
+const getProductBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    try {
+      const [rows] = await db.execute('SELECT * FROM products WHERE slug = ?', [slug]);
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found'
+        });
+      }
+
+      const product = rows[0];
+      
+      // Parse JSON fields
+      try {
+        product.product_images = JSON.parse(product.product_images || '[]');
+        product.colors = JSON.parse(product.colors || '[]');
+        product.sizes = JSON.parse(product.sizes || '[]');
+        product.variants = JSON.parse(product.variants || '[]');
+        product.specifications = JSON.parse(product.specifications || '[]');
+        product.features = JSON.parse(product.features || '[]');
+        product.tags = JSON.parse(product.tags || '[]');
+        product.delivery_charges = JSON.parse(product.delivery_charges || '[]');
+      } catch (parseError) {
+        console.error('Error parsing JSON fields:', parseError);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Product retrieved successfully',
+        data: product
+      });
+    } catch (dbError) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection failed. Please ensure MySQL is running and the database exists.',
+        error: dbError.message
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch product',
+      error: error.message
+    });
+  }
+};
+
 const getAllProducts = async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM products ORDER BY created_at DESC');
@@ -330,6 +381,7 @@ module.exports = {
   addProduct,
   getAllProducts,
   getProductById,
+  getProductBySlug,
   updateProduct,
   deleteProduct
 };

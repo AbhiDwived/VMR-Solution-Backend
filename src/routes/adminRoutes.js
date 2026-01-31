@@ -1,5 +1,5 @@
 const express = require('express');
-const { addProduct, getAllProducts, getProductById, updateProduct, deleteProduct } = require('../controllers/productController');
+const { addProduct, getAllProducts, getProductById, getProductBySlug, updateProduct, deleteProduct } = require('../controllers/productController');
 const { upload, createCategory, getAllCategories, getCategoryById, updateCategory, deleteCategory } = require('../controllers/categoryController');
 const { upload: brandUpload, createBrand, getAllBrands, getBrandById, updateBrand, deleteBrand } = require('../controllers/brandController');
 const { getAllSubscriptions, deleteSubscription } = require('../controllers/subscriptionController');
@@ -13,6 +13,7 @@ const router = express.Router();
 router.post('/product', authenticate, addProduct);
 router.get('/products', authenticate, getAllProducts);
 router.get('/product/:id', authenticate, getProductById);
+router.get('/product/slug/:slug', authenticate, getProductBySlug);
 router.put('/product/:id', authenticate, updateProduct);
 router.delete('/product/:id', authenticate, deleteProduct);
 
