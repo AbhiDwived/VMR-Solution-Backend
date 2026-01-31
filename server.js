@@ -30,10 +30,12 @@ app.get('/unauthorized', (req, res) => {
 const authRoutes = require('./src/routes/authRoutes');
 const protectedRoutes = require('./src/routes/protectedRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
+const bulkOrderRoutes = require('./src/routes/bulkOrders');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/bulk-orders', bulkOrderRoutes);
 
 
 // Start Server
