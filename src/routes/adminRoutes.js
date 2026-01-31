@@ -4,6 +4,7 @@ const { upload, createCategory, getAllCategories, getCategoryById, updateCategor
 const { upload: brandUpload, createBrand, getAllBrands, getBrandById, updateBrand, deleteBrand } = require('../controllers/brandController');
 const { getAllSubscriptions, deleteSubscription } = require('../controllers/subscriptionController');
 const { getAllInventory, updateStock, getLowStockProducts, getInventoryStats } = require('../controllers/inventoryController');
+const { createCoupon, getAllCoupons, getCouponById, updateCoupon, deleteCoupon, validateCoupon, applyCoupon, getCouponStats } = require('../controllers/couponController');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -38,5 +39,15 @@ router.get('/inventory', authenticate, getAllInventory);
 router.put('/inventory/:id/stock', authenticate, updateStock);
 router.get('/inventory/low-stock', authenticate, getLowStockProducts);
 router.get('/inventory/stats', authenticate, getInventoryStats);
+
+// Coupon routes
+router.post('/coupon', authenticate, createCoupon);
+router.get('/coupons', authenticate, getAllCoupons);
+router.get('/coupon/stats', authenticate, getCouponStats);
+router.get('/coupon/:id', authenticate, getCouponById);
+router.put('/coupon/:id', authenticate, updateCoupon);
+router.delete('/coupon/:id', authenticate, deleteCoupon);
+router.post('/coupon/validate', validateCoupon);
+router.post('/coupon/apply', applyCoupon);
 
 module.exports = router;

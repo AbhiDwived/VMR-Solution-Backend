@@ -2,6 +2,7 @@ const express = require('express');
 const { getAllCategories } = require('../controllers/categoryController');
 const { getAllBrands } = require('../controllers/brandController');
 const { createSubscription } = require('../controllers/subscriptionController');
+const { validateCoupon } = require('../controllers/couponController');
 
 const router = express.Router();
 
@@ -9,5 +10,6 @@ const router = express.Router();
 router.get('/categories', getAllCategories);
 router.get('/brands', getAllBrands);
 router.post('/subscribe', createSubscription);
+router.post('/coupon/validate', validateCoupon);
 
 module.exports = router;

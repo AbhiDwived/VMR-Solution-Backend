@@ -97,3 +97,37 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Create coupons table
+CREATE TABLE IF NOT EXISTS coupons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    type ENUM('percentage', 'fixed', 'free_shipping', 'buy_x_get_y') NOT NULL,
+    value DECIMAL(10,2) NOT NULL,
+    minimum_amount DECIMAL(10,2) DEFAULT 0,
+    maximum_discount DECIMAL(10,2) DEFAULT NULL,
+    usage_limit INT DEFAULT NULL,
+    used_count INT DEFAULT 0,
+    user_limit INT DEFAULT 1,
+    applicable_to ENUM('all', 'categories', 'products', 'brands') DEFAULT 'all',
+    applicable_ids JSON DEFAULT NULL,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    status ENUM('active', 'inactive', 'expired') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Create coupon_usage table
+CREATE TABLE IF NOT EXISTS coupon_usage (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    coupon_id INT NOT NULL,
+    user_id INT DEFAULT NULL,
+    order_id VARCHAR(100) DEFAULT NULL,
+    discount_amount DECIMAL(10,2) NOT NULL,
+    used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
