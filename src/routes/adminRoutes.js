@@ -1,5 +1,5 @@
 const express = require('express');
-const { addProduct, getAllProducts, getProductById, updateProduct, deleteProduct } = require('../controllers/adminController');
+const { addProduct, getAllProducts, getProductById, updateProduct, deleteProduct } = require('../controllers/productController');
 const { upload, createCategory, getAllCategories, getCategoryById, updateCategory, deleteCategory } = require('../controllers/categoryController');
 const { upload: brandUpload, createBrand, getAllBrands, getBrandById, updateBrand, deleteBrand } = require('../controllers/brandController');
 const { getAllSubscriptions, deleteSubscription } = require('../controllers/subscriptionController');
