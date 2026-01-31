@@ -15,6 +15,7 @@ app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static('uploads'));
 
 // Basic Route
 app.get('/', (req, res) => {
@@ -31,11 +32,13 @@ const authRoutes = require('./src/routes/authRoutes');
 const protectedRoutes = require('./src/routes/protectedRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const bulkOrderRoutes = require('./src/routes/bulkOrders');
+const publicRoutes = require('./src/routes/publicRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bulk-orders', bulkOrderRoutes);
+app.use('/api', publicRoutes);
 
 
 // Start Server
