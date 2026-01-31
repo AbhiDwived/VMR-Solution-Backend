@@ -3,6 +3,7 @@ const { addProduct, getAllProducts, getProductById, updateProduct, deleteProduct
 const { upload, createCategory, getAllCategories, getCategoryById, updateCategory, deleteCategory } = require('../controllers/categoryController');
 const { upload: brandUpload, createBrand, getAllBrands, getBrandById, updateBrand, deleteBrand } = require('../controllers/brandController');
 const { getAllSubscriptions, deleteSubscription } = require('../controllers/subscriptionController');
+const { getAllInventory, updateStock, getLowStockProducts, getInventoryStats } = require('../controllers/inventoryController');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -31,5 +32,11 @@ router.delete('/brand/:id', authenticate, deleteBrand);
 // Subscription routes
 router.get('/subscriptions', authenticate, getAllSubscriptions);
 router.delete('/subscription/:id', authenticate, deleteSubscription);
+
+// Inventory routes
+router.get('/inventory', authenticate, getAllInventory);
+router.put('/inventory/:id/stock', authenticate, updateStock);
+router.get('/inventory/low-stock', authenticate, getLowStockProducts);
+router.get('/inventory/stats', authenticate, getInventoryStats);
 
 module.exports = router;
