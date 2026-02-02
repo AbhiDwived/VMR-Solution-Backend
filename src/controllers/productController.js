@@ -222,10 +222,30 @@ const getAllProducts = async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM products ORDER BY created_at DESC');
 
+    // Parse JSON fields for each product
+    const products = rows.map(product => {
+      try {
+        return {
+          ...product,
+          product_images: JSON.parse(product.product_images || '[]'),
+          colors: JSON.parse(product.colors || '[]'),
+          sizes: JSON.parse(product.sizes || '[]'),
+          variants: JSON.parse(product.variants || '[]'),
+          specifications: JSON.parse(product.specifications || '[]'),
+          features: JSON.parse(product.features || '[]'),
+          tags: JSON.parse(product.tags || '[]'),
+          delivery_charges: JSON.parse(product.delivery_charges || '[]'),
+        };
+      } catch (parseError) {
+        console.error('Error parsing JSON fields for product:', product.id, parseError);
+        return product;
+      }
+    });
+
     res.status(200).json({
       success: true,
       message: 'Products retrieved successfully',
-      data: rows
+      data: products
     });
   } catch (error) {
     res.status(500).json({
