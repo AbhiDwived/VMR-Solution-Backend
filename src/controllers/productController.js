@@ -133,15 +133,32 @@ const getProductById = async (req, res) => {
       const product = rows[0];
       
       // Parse JSON fields
+      const parseJsonField = (field, fallback = []) => {
+        if (!field) return fallback;
+        if (typeof field === 'string') {
+          // Check if it's already a JSON string
+          if (field.startsWith('[') || field.startsWith('{')) {
+            try {
+              return JSON.parse(field);
+            } catch {
+              return fallback;
+            }
+          }
+          // If it's a plain string (like a file path), wrap it in an array
+          return [field];
+        }
+        return field;
+      };
+
       try {
-        product.product_images = JSON.parse(product.product_images || '[]');
-        product.colors = JSON.parse(product.colors || '[]');
-        product.sizes = JSON.parse(product.sizes || '[]');
-        product.variants = JSON.parse(product.variants || '[]');
-        product.specifications = JSON.parse(product.specifications || '[]');
-        product.features = JSON.parse(product.features || '[]');
-        product.tags = JSON.parse(product.tags || '[]');
-        product.delivery_charges = JSON.parse(product.delivery_charges || '[]');
+        product.product_images = parseJsonField(product.product_images, []);
+        product.colors = parseJsonField(product.colors, []);
+        product.sizes = parseJsonField(product.sizes, []);
+        product.variants = parseJsonField(product.variants, []);
+        product.specifications = parseJsonField(product.specifications, []);
+        product.features = parseJsonField(product.features, []);
+        product.tags = parseJsonField(product.tags, []);
+        product.delivery_charges = parseJsonField(product.delivery_charges, []);
       } catch (parseError) {
         console.error('Error parsing JSON fields:', parseError);
       }
@@ -184,15 +201,32 @@ const getProductBySlug = async (req, res) => {
       const product = rows[0];
       
       // Parse JSON fields
+      const parseJsonField = (field, fallback = []) => {
+        if (!field) return fallback;
+        if (typeof field === 'string') {
+          // Check if it's already a JSON string
+          if (field.startsWith('[') || field.startsWith('{')) {
+            try {
+              return JSON.parse(field);
+            } catch {
+              return fallback;
+            }
+          }
+          // If it's a plain string (like a file path), wrap it in an array
+          return [field];
+        }
+        return field;
+      };
+
       try {
-        product.product_images = JSON.parse(product.product_images || '[]');
-        product.colors = JSON.parse(product.colors || '[]');
-        product.sizes = JSON.parse(product.sizes || '[]');
-        product.variants = JSON.parse(product.variants || '[]');
-        product.specifications = JSON.parse(product.specifications || '[]');
-        product.features = JSON.parse(product.features || '[]');
-        product.tags = JSON.parse(product.tags || '[]');
-        product.delivery_charges = JSON.parse(product.delivery_charges || '[]');
+        product.product_images = parseJsonField(product.product_images, []);
+        product.colors = parseJsonField(product.colors, []);
+        product.sizes = parseJsonField(product.sizes, []);
+        product.variants = parseJsonField(product.variants, []);
+        product.specifications = parseJsonField(product.specifications, []);
+        product.features = parseJsonField(product.features, []);
+        product.tags = parseJsonField(product.tags, []);
+        product.delivery_charges = parseJsonField(product.delivery_charges, []);
       } catch (parseError) {
         console.error('Error parsing JSON fields:', parseError);
       }
@@ -224,18 +258,37 @@ const getAllProducts = async (req, res) => {
 
     // Parse JSON fields for each product
     const products = rows.map(product => {
+      const parseJsonField = (field, fallback = []) => {
+        if (!field) return fallback;
+        if (typeof field === 'string') {
+          // Check if it's already a JSON string
+          if (field.startsWith('[') || field.startsWith('{')) {
+            try {
+              return JSON.parse(field);
+            } catch {
+              return fallback;
+            }
+          }
+          // If it's a plain string (like a file path), wrap it in an array
+          return [field];
+        }
+        return field;
+      };
+
       try {
-        return {
+        const parsedProduct = {
           ...product,
-          product_images: JSON.parse(product.product_images || '[]'),
-          colors: JSON.parse(product.colors || '[]'),
-          sizes: JSON.parse(product.sizes || '[]'),
-          variants: JSON.parse(product.variants || '[]'),
-          specifications: JSON.parse(product.specifications || '[]'),
-          features: JSON.parse(product.features || '[]'),
-          tags: JSON.parse(product.tags || '[]'),
-          delivery_charges: JSON.parse(product.delivery_charges || '[]'),
+          product_images: parseJsonField(product.product_images, []),
+          colors: parseJsonField(product.colors, []),
+          sizes: parseJsonField(product.sizes, []),
+          variants: parseJsonField(product.variants, []),
+          specifications: parseJsonField(product.specifications, []),
+          features: parseJsonField(product.features, []),
+          tags: parseJsonField(product.tags, []),
+          delivery_charges: parseJsonField(product.delivery_charges, []),
         };
+        
+        return parsedProduct;
       } catch (parseError) {
         console.error('Error parsing JSON fields for product:', product.id, parseError);
         return product;
