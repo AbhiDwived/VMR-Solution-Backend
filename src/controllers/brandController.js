@@ -1,24 +1,14 @@
 const db = require('../config/db');
 const multer = require('multer');
-const path = require('path');
+const { uploadImage } = require('../utils/imagekit');
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/brands/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
-    }
-});
-
-const upload = multer({ storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Create brand
 const createBrand = async (req, res) => {
     try {
         const { name, status = 'active' } = req.body;
-        const image = req.file ? `/uploads/brands/${req.file.filename}` : null;
+        const image = req.file ? await uploadImage(req.file, 'brands') : null;
         
         if (!name) {
             return res.status(400).json({ message: 'Brand name is required' });
@@ -74,7 +64,7 @@ const updateBrand = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, status } = req.body;
-        const image = req.file ? `/uploads/brands/${req.file.filename}` : null;
+        const image = req.file ? await uploadImage(req.file, 'brands') : null;
         
         const [existing] = await db.execute('SELECT * FROM brands WHERE id = ?', [id]);
         if (existing.length === 0) {
