@@ -1,13 +1,4 @@
 const db = require('../config/db');
-const multer = require('multer');
-const path = require('path');
-
-// Configure multer for blog images
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/blogs/'),
-    filename: (req, file, cb) => cb(null, `blog-${Date.now()}${path.extname(file.originalname)}`)
-});
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Get all blogs
 exports.getAllBlogs = async (req, res) => {
@@ -52,9 +43,8 @@ exports.getBlog = async (req, res) => {
 // Create blog
 exports.createBlog = async (req, res) => {
     try {
-        const { title, excerpt, content, category, status } = req.body;
+        const { title, excerpt, content, category, status, image } = req.body;
         const authorId = req.user.id;
-        const image = req.file ? `/uploads/blogs/${req.file.filename}` : null;
         
         const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         
@@ -73,8 +63,7 @@ exports.createBlog = async (req, res) => {
 exports.updateBlog = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, excerpt, content, category, status } = req.body;
-        const image = req.file ? `/uploads/blogs/${req.file.filename}` : undefined;
+        const { title, excerpt, content, category, status, image } = req.body;
         
         const updates = [];
         const params = [];
@@ -109,5 +98,3 @@ exports.deleteBlog = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
-
-exports.upload = upload;

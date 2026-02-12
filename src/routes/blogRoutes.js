@@ -5,8 +5,8 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 router.get('/', blogController.getAllBlogs);
 router.get('/:id', blogController.getBlog);
-router.post('/', authenticate, authorize('admin'), blogController.upload.single('image'), blogController.createBlog);
-router.put('/:id', authenticate, authorize('admin'), blogController.upload.single('image'), blogController.updateBlog);
+router.post('/', authenticate, authorize('admin'), blogController.createBlog);
+router.put('/:id', authenticate, authorize('admin'), blogController.updateBlog);
 router.delete('/:id', authenticate, authorize('admin'), blogController.deleteBlog);
 
 module.exports = router;
