@@ -35,6 +35,7 @@ const bulkOrderRoutes = require('./src/routes/bulkOrders');
 const contactRoutes = require('./src/routes/contact');
 const publicRoutes = require('./src/routes/publicRoutes');
 const blogRoutes = require('./src/routes/blogRoutes');
+const orderRoutes = require('./src/routes/orderRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
@@ -43,6 +44,7 @@ app.use('/api/bulk-orders', bulkOrderRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api', publicRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/orders', orderRoutes);
 
 
 // Start Server
