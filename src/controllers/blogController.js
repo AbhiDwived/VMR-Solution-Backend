@@ -1,0 +1,113 @@
+const db = require('../config/db');
+const multer = require('multer');
+const path = require('path');
+
+// Configure multer for blog images
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'uploads/blogs/'),
+    filename: (req, file, cb) => cb(null, `blog-${Date.now()}${path.extname(file.originalname)}`)
+});
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Get all blogs
+exports.getAllBlogs = async (req, res) => {
+    try {
+        const { status } = req.query;
+        let query = 'SELECT b.*, u.full_name as author FROM blogs b JOIN users u ON b.author_id = u.id';
+        const params = [];
+        
+        if (status) {
+            query += ' WHERE b.status = ?';
+            params.push(status);
+        }
+        
+        query += ' ORDER BY b.created_at DESC';
+        const [blogs] = await db.query(query, params);
+        res.json({ blogs });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Get single blog
+exports.getBlog = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [blogs] = await db.query(
+            'SELECT b.*, u.full_name as author FROM blogs b JOIN users u ON b.author_id = u.id WHERE b.id = ?',
+            [id]
+        );
+        
+        if (blogs.length === 0) {
+            return res.status(404).json({ message: 'Blog not found' });
+        }
+        
+        await db.query('UPDATE blogs SET views = views + 1 WHERE id = ?', [id]);
+        res.json({ blog: blogs[0] });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Create blog
+exports.createBlog = async (req, res) => {
+    try {
+        const { title, excerpt, content, category, status } = req.body;
+        const authorId = req.user.id;
+        const image = req.file ? `/uploads/blogs/${req.file.filename}` : null;
+        
+        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        
+        const [result] = await db.query(
+            'INSERT INTO blogs (title, slug, excerpt, content, category, image, author_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [title, slug, excerpt, content, category, image, authorId, status || 'draft']
+        );
+        
+        res.status(201).json({ message: 'Blog created successfully', blogId: result.insertId });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Update blog
+exports.updateBlog = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, excerpt, content, category, status } = req.body;
+        const image = req.file ? `/uploads/blogs/${req.file.filename}` : undefined;
+        
+        const updates = [];
+        const params = [];
+        
+        if (title) {
+            updates.push('title = ?', 'slug = ?');
+            const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            params.push(title, slug);
+        }
+        if (excerpt) { updates.push('excerpt = ?'); params.push(excerpt); }
+        if (content) { updates.push('content = ?'); params.push(content); }
+        if (category) { updates.push('category = ?'); params.push(category); }
+        if (status) { updates.push('status = ?'); params.push(status); }
+        if (image) { updates.push('image = ?'); params.push(image); }
+        
+        params.push(id);
+        await db.query(`UPDATE blogs SET ${updates.join(', ')} WHERE id = ?`, params);
+        
+        res.json({ message: 'Blog updated successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Delete blog
+exports.deleteBlog = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.query('DELETE FROM blogs WHERE id = ?', [id]);
+        res.json({ message: 'Blog deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+exports.upload = upload;

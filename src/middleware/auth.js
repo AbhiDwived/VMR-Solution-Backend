@@ -1,25 +1,21 @@
 const jwt = require('jsonwebtoken');
 
-// Middleware to verify JWT token
 exports.authenticate = (req, res, next) => {
     try {
-        // Get token from header or cookie
-        let token = req.header('Authorization')?.replace('Bearer ', '');
+        let token = req.header('Authorization') || req.header('authorization');
+        if (token) token = token.replace('Bearer ', '');
         
-        // If no token in header, check cookies
-        if (!token && req.cookies) {
-            token = req.cookies.auth_token;
-        }
+        if (!token && req.cookies) token = req.cookies.auth_token;
 
         if (!token) {
             return res.status(401).json({ message: 'No token, authorization denied' });
         }
 
-        // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
         req.user = decoded.user;
         next();
     } catch (error) {
+        console.error('Auth error:', error.message);
         res.status(401).json({ message: 'Token is not valid' });
     }
 };
