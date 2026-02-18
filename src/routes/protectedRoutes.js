@@ -1,6 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize, isAdmin } = require('../middleware/auth');
+const cartController = require('../controllers/cartController');
+const wishlistController = require('../controllers/wishlistController');
+
+// Cart routes
+router.get('/cart', authenticate, cartController.getCart);
+router.post('/cart', authenticate, cartController.addToCart);
+router.put('/cart/:id', authenticate, cartController.updateCart);
+router.delete('/cart/:id', authenticate, cartController.removeFromCart);
+router.delete('/cart', authenticate, cartController.clearCart);
+
+// Wishlist routes
+router.get('/wishlist', authenticate, wishlistController.getWishlist);
+router.post('/wishlist', authenticate, wishlistController.addToWishlist);
+router.delete('/wishlist/:id', authenticate, wishlistController.removeFromWishlist);
 
 // Example: Route accessible by any authenticated user
 router.get('/profile', authenticate, (req, res) => {
