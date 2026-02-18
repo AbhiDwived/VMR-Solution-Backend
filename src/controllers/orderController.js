@@ -1,5 +1,21 @@
 const db = require('../config/db');
 
+exports.getAllOrders = async (req, res) => {
+  try {
+    const [orders] = await db.execute(
+      `SELECT o.*, u.full_name, u.email, COUNT(oi.id) as item_count 
+       FROM orders o 
+       LEFT JOIN users u ON o.user_id = u.id
+       LEFT JOIN order_items oi ON o.id = oi.order_id 
+       GROUP BY o.id 
+       ORDER BY o.created_at DESC`
+    );
+    res.json({ success: true, orders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.createOrder = async (req, res) => {
   try {
     const { items, address, paymentMethod, subtotal, gst, deliveryCharges, discount, total } = req.body;

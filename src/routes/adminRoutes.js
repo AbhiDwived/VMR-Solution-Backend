@@ -5,6 +5,7 @@ const { upload: brandUpload, createBrand, getAllBrands, getBrandById, updateBran
 const { getAllSubscriptions, deleteSubscription } = require('../controllers/subscriptionController');
 const { getAllInventory, updateStock, getLowStockProducts, getInventoryStats } = require('../controllers/inventoryController');
 const { createCoupon, getAllCoupons, getCouponById, updateCoupon, deleteCoupon, validateCoupon, applyCoupon, getCouponStats } = require('../controllers/couponController');
+const { getAllOrders } = require('../controllers/orderController');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -50,5 +51,8 @@ router.put('/coupon/:id', authenticate, updateCoupon);
 router.delete('/coupon/:id', authenticate, deleteCoupon);
 router.post('/coupon/validate', validateCoupon);
 router.post('/coupon/apply', applyCoupon);
+
+// Order routes
+router.get('/orders', authenticate, getAllOrders);
 
 module.exports = router;
