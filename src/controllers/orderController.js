@@ -21,6 +21,114 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+exports.getAnalyticsSummary = async (req, res) => {
+  try {
+    const [kpiRows] = await db.execute(
+      `SELECT 
+         COUNT(*) AS total_orders,
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS total_revenue,
+         COALESCE(AVG(CASE WHEN status != 'cancelled' THEN total ELSE NULL END), 0) AS avg_order_value,
+         COALESCE(SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END), 0) AS delivered_orders
+       FROM orders`
+    );
+
+    const [monthlyRows] = await db.execute(
+      `SELECT
+         DATE_FORMAT(created_at, '%Y-%m') AS month_key,
+         DATE_FORMAT(created_at, '%b') AS month_label,
+         COUNT(*) AS orders,
+         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS refunds,
+         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS revenue
+       FROM orders
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+       GROUP BY month_key, month_label
+       ORDER BY month_key ASC`
+    );
+
+    const [categoryRows] = await db.execute(
+      `SELECT
+         COALESCE(NULLIF(TRIM(p.category), ''), 'Uncategorized') AS name,
+         COALESCE(SUM(oi.quantity * oi.price), 0) AS value
+       FROM order_items oi
+       INNER JOIN orders o ON o.id = oi.order_id
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE o.status != 'cancelled'
+       GROUP BY name
+       ORDER BY value DESC
+       LIMIT 5`
+    );
+
+    const [statusRows] = await db.execute(
+      `SELECT
+         COALESCE(NULLIF(TRIM(status), ''), 'unknown') AS source,
+         COUNT(*) AS visitors
+       FROM orders
+       GROUP BY source
+       ORDER BY visitors DESC`
+    );
+
+    const monthMap = new Map(
+      monthlyRows.map((row) => [
+        row.month_key,
+        {
+          month: row.month_label,
+          revenue: Number(row.revenue || 0),
+          orders: Number(row.orders || 0),
+          refunds: Number(row.refunds || 0),
+        },
+      ])
+    );
+
+    const monthlySalesData = [];
+    const now = new Date();
+    now.setDate(1);
+
+    for (let i = 11; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = d.toLocaleString('en-US', { month: 'short' });
+
+      monthlySalesData.push(
+        monthMap.get(monthKey) || {
+          month: monthLabel,
+          revenue: 0,
+          orders: 0,
+          refunds: 0,
+        }
+      );
+    }
+
+    const kpi = kpiRows[0] || {};
+    const totalOrders = Number(kpi.total_orders || 0);
+    const deliveredOrders = Number(kpi.delivered_orders || 0);
+    const conversionRate = totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0;
+
+    res.json({
+      success: true,
+      data: {
+        kpis: {
+          totalRevenue: Number(kpi.total_revenue || 0),
+          totalOrders,
+          conversionRate: Number(conversionRate.toFixed(1)),
+          avgOrderValue: Number(kpi.avg_order_value || 0),
+        },
+        monthlySalesData,
+        categoryData: categoryRows.map((row) => ({
+          name: row.name,
+          value: Number(row.value || 0),
+        })),
+        trafficSourceData: statusRows.map((row) => ({
+          source: String(row.source || 'unknown'),
+          visitors: Number(row.visitors || 0),
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching analytics summary:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
