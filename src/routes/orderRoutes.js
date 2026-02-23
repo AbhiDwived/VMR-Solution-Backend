@@ -6,5 +6,6 @@ const { authenticate } = require('../middleware/auth');
 router.post('/create', authenticate, orderController.createOrder);
 router.get('/addresses', authenticate, orderController.getUserAddresses);
 router.post('/addresses', authenticate, orderController.addAddress);
+router.put('/addresses/:addressId/default', authenticate, orderController.setDefaultAddress);
 
 module.exports = router;

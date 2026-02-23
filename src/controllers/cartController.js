@@ -9,8 +9,11 @@ exports.getCart = async (req, res) => {
        WHERE c.user_id = ?`,
       [req.user.id]
     );
+    console.log('📦 Get cart - User:', req.user.id, 'Items:', items.length);
+    console.log('📊 Cart items:', items.map(i => ({ id: i.id, product: i.name, qty: i.quantity })));
     res.json({ success: true, data: items });
   } catch (error) {
+    console.error('❌ Get cart error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -34,12 +37,36 @@ exports.updateCart = async (req, res) => {
   try {
     const { id } = req.params;
     const { quantity } = req.body;
-    await db.query(
-      'UPDATE cart SET quantity = ? WHERE id = ? AND user_id = ?',
-      [quantity, id, req.user.id]
+    
+    console.log('🔄 Update cart request:', { id, quantity, userId: req.user.id });
+    
+    // First, check if the cart item exists
+    const [existing] = await db.query(
+      'SELECT * FROM cart WHERE id = ? AND user_id = ?',
+      [id, req.user.id]
     );
-    res.json({ success: true, message: 'Cart updated' });
+    
+    console.log('🔍 Existing cart item:', existing);
+    
+    if (existing.length === 0) {
+      console.log('❌ Cart item not found - ID:', id, 'User:', req.user.id);
+      return res.status(404).json({ success: false, message: 'Cart item not found' });
+    }
+    
+    if (quantity <= 0) {
+      const [result] = await db.query('DELETE FROM cart WHERE id = ? AND user_id = ?', [id, req.user.id]);
+      console.log('🗑️ Delete result:', result);
+      res.json({ success: true, message: 'Item removed from cart' });
+    } else {
+      const [result] = await db.query(
+        'UPDATE cart SET quantity = ? WHERE id = ? AND user_id = ?',
+        [quantity, id, req.user.id]
+      );
+      console.log('✅ Update result:', result);
+      res.json({ success: true, message: 'Cart updated', data: { id, quantity } });
+    }
   } catch (error) {
+    console.error('❌ Update cart error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

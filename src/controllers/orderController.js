@@ -72,3 +72,17 @@ exports.addAddress = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.setDefaultAddress = async (req, res) => {
+  try {
+    const { addressId } = req.params;
+    const userId = req.user.id;
+
+    await db.execute('UPDATE addresses SET is_default = 0 WHERE user_id = ?', [userId]);
+    await db.execute('UPDATE addresses SET is_default = 1 WHERE id = ? AND user_id = ?', [addressId, userId]);
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
