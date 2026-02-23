@@ -5,7 +5,7 @@ const { upload: brandUpload, createBrand, getAllBrands, getBrandById, updateBran
 const { getAllSubscriptions, deleteSubscription } = require('../controllers/subscriptionController');
 const { getAllInventory, updateStock, getLowStockProducts, getInventoryStats } = require('../controllers/inventoryController');
 const { createCoupon, getAllCoupons, getCouponById, updateCoupon, deleteCoupon, validateCoupon, applyCoupon, getCouponStats } = require('../controllers/couponController');
-const { getAllOrders } = require('../controllers/orderController');
+const { getAllOrders, getOrderById, updateOrderStatus } = require('../controllers/orderController');
 const { getAllNotifications, createNotification, markAsRead, markAllAsRead, deleteNotification, getUnreadCount, getNotificationStats } = require('../controllers/notificationController');
 const { authenticate, authorize } = require('../middleware/auth');
 
@@ -55,6 +55,8 @@ router.post('/coupon/apply', applyCoupon);
 
 // Order routes
 router.get('/orders', authenticate, getAllOrders);
+router.get('/order/:id', authenticate, getOrderById);
+router.put('/order/:id/status', authenticate, updateOrderStatus);
 
 // Notification routes
 router.get('/notifications', authenticate, authorize('admin'), getAllNotifications);
