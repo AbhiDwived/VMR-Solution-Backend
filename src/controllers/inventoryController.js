@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { notifyLowStock } = require('../utils/notificationService');
 
 const getAllInventory = async (req, res) => {
   try {
@@ -76,6 +77,11 @@ const updateStock = async (req, res) => {
 
     // Get updated product
     const [updatedProduct] = await db.execute('SELECT * FROM products WHERE id = ?', [id]);
+    
+    // Create notification if stock is low
+    if (updatedProduct[0].stock_quantity <= 10) {
+      await notifyLowStock(updatedProduct[0].name, updatedProduct[0].stock_quantity);
+    }
 
     res.status(200).json({
       success: true,

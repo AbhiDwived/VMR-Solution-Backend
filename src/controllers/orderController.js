@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { notifyNewOrder, createNotification } = require('../utils/notificationService');
 
 exports.getAllOrders = async (req, res) => {
   try {
@@ -35,6 +36,18 @@ exports.createOrder = async (req, res) => {
         [orderId, item.id, item.quantity, item.price]
       );
     }
+    
+    // Get user info for notification
+    const [user] = await db.execute('SELECT full_name FROM users WHERE id = ?', [userId]);
+    await notifyNewOrder(orderId, user[0].full_name, total);
+    await createNotification({
+      user_id: userId,
+      type: 'order',
+      title: 'Order Placed Successfully',
+      message: `Your order #${orderId} has been placed. Total amount: Rs ${total}.`,
+      priority: 'medium',
+      link: '/dashboard/user-dashboard/orders'
+    });
 
     res.status(201).json({ success: true, orderId });
   } catch (error) {

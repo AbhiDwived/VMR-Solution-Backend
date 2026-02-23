@@ -16,6 +16,13 @@ router.get('/wishlist', authenticate, wishlistController.getWishlist);
 router.post('/wishlist', authenticate, wishlistController.addToWishlist);
 router.delete('/wishlist/:id', authenticate, wishlistController.removeFromWishlist);
 
+// User Notification routes
+const { getUserNotifications, markUserNotificationAsRead, markAllUserNotificationsAsRead, getUserUnreadCount } = require('../controllers/notificationController');
+router.get('/notifications', authenticate, getUserNotifications);
+router.put('/notification/:id/read', authenticate, markUserNotificationAsRead);
+router.put('/notifications/read-all', authenticate, markAllUserNotificationsAsRead);
+router.get('/notifications/unread-count', authenticate, getUserUnreadCount);
+
 // Example: Route accessible by any authenticated user
 router.get('/profile', authenticate, (req, res) => {
     res.json({

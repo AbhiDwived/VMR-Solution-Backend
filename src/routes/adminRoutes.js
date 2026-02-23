@@ -6,7 +6,8 @@ const { getAllSubscriptions, deleteSubscription } = require('../controllers/subs
 const { getAllInventory, updateStock, getLowStockProducts, getInventoryStats } = require('../controllers/inventoryController');
 const { createCoupon, getAllCoupons, getCouponById, updateCoupon, deleteCoupon, validateCoupon, applyCoupon, getCouponStats } = require('../controllers/couponController');
 const { getAllOrders } = require('../controllers/orderController');
-const { authenticate } = require('../middleware/auth');
+const { getAllNotifications, createNotification, markAsRead, markAllAsRead, deleteNotification, getUnreadCount, getNotificationStats } = require('../controllers/notificationController');
+const { authenticate, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -54,5 +55,14 @@ router.post('/coupon/apply', applyCoupon);
 
 // Order routes
 router.get('/orders', authenticate, getAllOrders);
+
+// Notification routes
+router.get('/notifications', authenticate, authorize('admin'), getAllNotifications);
+router.post('/notification', authenticate, authorize('admin'), createNotification);
+router.put('/notification/:id/read', authenticate, authorize('admin'), markAsRead);
+router.put('/notifications/read-all', authenticate, authorize('admin'), markAllAsRead);
+router.delete('/notification/:id', authenticate, authorize('admin'), deleteNotification);
+router.get('/notifications/unread-count', authenticate, authorize('admin'), getUnreadCount);
+router.get('/notifications/stats', authenticate, authorize('admin'), getNotificationStats);
 
 module.exports = router;
