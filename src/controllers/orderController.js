@@ -194,7 +194,7 @@ exports.createOrder = async (req, res) => {
     );
 
     const orderId = result.insertId;
-    const orderNumber = `VMR-${String(orderId).padStart(3, '0')}`;
+    const orderNumber = `ORD-${String(orderId).padStart(3, '0')}`;
 
     for (const item of items) {
       await db.execute(
