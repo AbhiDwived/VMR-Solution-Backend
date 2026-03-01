@@ -133,7 +133,9 @@ exports.getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
     const [orders] = await db.execute(
-      `SELECT o.*, u.full_name, u.email, u.mobile 
+      `SELECT o.*, u.full_name, u.email, u.mobile,
+       DATE_FORMAT(CONVERT_TZ(o.created_at, '+00:00', '+05:30'), '%d/%m/%Y %h:%i %p') as formatted_created_at,
+       DATE_FORMAT(CONVERT_TZ(o.updated_at, '+00:00', '+05:30'), '%d/%m/%Y %h:%i %p') as formatted_updated_at
        FROM orders o 
        LEFT JOIN users u ON o.user_id = u.id 
        WHERE o.id = ?`,
@@ -203,7 +205,6 @@ exports.createOrder = async (req, res) => {
       );
     }
     
-    // Get user info for notification
     const [user] = await db.execute('SELECT full_name FROM users WHERE id = ?', [userId]);
     await notifyNewOrder(orderNumber, user[0].full_name, total);
     await createNotification({
@@ -217,6 +218,212 @@ exports.createOrder = async (req, res) => {
 
     res.status(201).json({ success: true, orderId, orderNumber });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getUserOrders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [orders] = await db.execute(
+      `SELECT o.id, o.total, o.status, o.created_at,
+       COUNT(DISTINCT oi.id) as item_count,
+       GROUP_CONCAT(DISTINCT p.name SEPARATOR ', ') as product_names,
+       GROUP_CONCAT(DISTINCT p.slug SEPARATOR ',') as product_slugs,
+       GROUP_CONCAT(DISTINCT p.product_images SEPARATOR '|||') as product_images
+       FROM orders o 
+       LEFT JOIN order_items oi ON o.id = oi.order_id
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE o.user_id = ?
+       GROUP BY o.id 
+       ORDER BY o.created_at DESC`,
+      [userId]
+    );
+    res.json({ success: true, orders });
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getUserActivity = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const activities = [];
+
+    const [orders] = await db.execute(
+      `SELECT o.id, o.status, o.created_at, GROUP_CONCAT(p.name SEPARATOR ', ') as product_names
+       FROM orders o
+       LEFT JOIN order_items oi ON o.id = oi.order_id
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE o.user_id = ?
+       GROUP BY o.id
+       ORDER BY o.created_at DESC LIMIT 5`,
+      [userId]
+    );
+
+    orders.forEach(order => {
+      const orderNum = `ORD-${String(order.id).padStart(3, '0')}`;
+      if (order.status === 'delivered') {
+        activities.push({
+          type: 'order_delivered',
+          icon: 'CheckCircleIcon',
+          iconColor: 'bg-success',
+          title: 'Order Delivered',
+          description: `Order #${orderNum} has been successfully delivered`,
+          timestamp: order.created_at
+        });
+      } else if (order.status === 'shipped') {
+        activities.push({
+          type: 'order_shipped',
+          icon: 'TruckIcon',
+          iconColor: 'bg-accent',
+          title: 'Order Shipped',
+          description: `Your order #${orderNum} has been shipped and is on the way`,
+          timestamp: order.created_at
+        });
+      } else if (order.status === 'pending') {
+        activities.push({
+          type: 'order_placed',
+          icon: 'ShoppingBagIcon',
+          iconColor: 'bg-primary',
+          title: 'Order Placed',
+          description: `Order #${orderNum} has been placed successfully`,
+          timestamp: order.created_at
+        });
+      }
+    });
+
+    const [wishlist] = await db.execute(
+      `SELECT w.created_at, p.name FROM wishlist w
+       LEFT JOIN products p ON w.product_id = p.id
+       WHERE w.user_id = ?
+       ORDER BY w.created_at DESC LIMIT 3`,
+      [userId]
+    );
+
+    wishlist.forEach(item => {
+      activities.push({
+        type: 'wishlist_added',
+        icon: 'HeartIcon',
+        iconColor: 'bg-error',
+        title: 'Added to Wishlist',
+        description: `${item.name} added to your wishlist`,
+        timestamp: item.created_at
+      });
+    });
+
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json({ success: true, activities: activities.slice(0, 5) });
+  } catch (error) {
+    console.error('Error fetching user activity:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getRecommendedProducts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const [products] = await db.execute(
+      `SELECT DISTINCT p.id, p.name, p.price, p.product_images, p.slug
+       FROM products p
+       WHERE p.id NOT IN (
+         SELECT DISTINCT oi.product_id FROM order_items oi
+         JOIN orders o ON o.id = oi.order_id
+         WHERE o.user_id = ?
+       )
+       AND p.stock > 0
+       AND p.category IN (
+         SELECT DISTINCT p2.category FROM products p2
+         JOIN order_items oi2 ON p2.id = oi2.product_id
+         JOIN orders o2 ON o2.id = oi2.order_id
+         WHERE o2.user_id = ?
+       )
+       ORDER BY RAND()
+       LIMIT 3`,
+      [userId, userId]
+    );
+
+    if (products.length < 3) {
+      const [fallbackProducts] = await db.execute(
+        `SELECT p.id, p.name, p.price, p.product_images, p.slug
+         FROM products p
+         WHERE p.stock > 0
+         ORDER BY RAND()
+         LIMIT ?`,
+        [3 - products.length]
+      );
+      products.push(...fallbackProducts);
+    }
+
+    res.json({ success: true, products });
+  } catch (error) {
+    console.error('Error fetching recommended products:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getOrderInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    
+    const [orders] = await db.execute(
+      `SELECT o.*, u.full_name, u.email, u.mobile,
+       DATE_FORMAT(CONVERT_TZ(o.created_at, '+00:00', '+05:30'), '%d/%m/%Y') as order_date
+       FROM orders o 
+       LEFT JOIN users u ON o.user_id = u.id 
+       WHERE o.id = ? AND o.user_id = ?`,
+      [id, userId]
+    );
+    
+    if (orders.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    
+    const [items] = await db.execute(
+      `SELECT oi.*, p.name, p.slug 
+       FROM order_items oi 
+       LEFT JOIN products p ON oi.product_id = p.id 
+       WHERE oi.order_id = ?`,
+      [id]
+    );
+    
+    const order = orders[0];
+    let address = {};
+    try {
+      address = typeof order.address === 'string' ? JSON.parse(order.address) : order.address;
+    } catch (e) {
+      address = {};
+    }
+    
+    res.json({ 
+      success: true, 
+      invoice: {
+        orderNumber: `ORD-${String(order.id).padStart(3, '0')}`,
+        orderDate: order.order_date,
+        customerName: order.full_name,
+        customerEmail: order.email,
+        customerPhone: order.mobile,
+        address,
+        items: items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.quantity * item.price
+        })),
+        subtotal: order.subtotal,
+        gst: order.gst,
+        deliveryCharges: order.delivery_charges,
+        discount: order.discount,
+        total: order.total,
+        paymentMethod: order.payment_method,
+        status: order.status
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching invoice:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
