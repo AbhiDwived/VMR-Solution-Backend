@@ -4,6 +4,8 @@ const { getAllBrands } = require('../controllers/brandController');
 const { createSubscription } = require('../controllers/subscriptionController');
 const { validateCoupon } = require('../controllers/couponController');
 const { getAllProducts, getProductBySlug, getRelatedProducts } = require('../controllers/productController');
+const { createReview, getProductReviews } = require('../controllers/reviewController');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -17,5 +19,9 @@ router.post('/coupon/validate', validateCoupon);
 router.get('/products', getAllProducts);
 router.get('/product/slug/:slug', getProductBySlug);
 router.get('/product/slug/:slug/related', getRelatedProducts);
+
+// Review routes
+router.post('/reviews', createReview);
+router.get('/reviews/:productId', getProductReviews);
 
 module.exports = router;
