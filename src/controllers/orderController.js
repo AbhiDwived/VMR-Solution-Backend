@@ -163,12 +163,29 @@ exports.getOrderById = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, cancel_reason } = req.body;
     
-    const [result] = await db.execute(
-      'UPDATE orders SET status = ? WHERE id = ?',
-      [status, id]
-    );
+    const timestampField = {
+      'confirmed': 'confirmed_at',
+      'shipped': 'shipped_at',
+      'delivered': 'delivered_at',
+      'cancelled': 'cancelled_at'
+    }[status];
+    
+    let query = 'UPDATE orders SET status = ?';
+    const params = [status];
+    
+    if (timestampField) {
+      query += `, ${timestampField} = NOW()`;
+    }
+    if (status === 'cancelled' && cancel_reason) {
+      query += ', cancel_reason = ?';
+      params.push(cancel_reason);
+    }
+    query += ' WHERE id = ?';
+    params.push(id);
+    
+    const [result] = await db.execute(query, params);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -200,8 +217,9 @@ exports.createOrder = async (req, res) => {
 
     for (const item of items) {
       await db.execute(
-        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)`,
-        [orderId, item.id, item.quantity, item.price]
+        `INSERT INTO order_items (order_id, product_id, variant_id, product_name, product_image, quantity, price, original_price, discount_price) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [orderId, item.id, item.variant_id || null, item.name, item.image || item.product_images, item.quantity, item.price, item.original_price || item.price, item.discount_price || item.price]
       );
     }
     
