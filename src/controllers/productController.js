@@ -252,6 +252,43 @@ const getProductBySlug = async (req, res) => {
   }
 };
 
+const getRelatedProducts = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const [product] = await db.execute('SELECT category FROM products WHERE slug = ?', [slug]);
+    
+    if (product.length === 0) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const [rows] = await db.execute(
+      'SELECT id, name, slug, price, discount_price, product_images, category FROM products WHERE category = ? AND slug != ? AND status = "active" ORDER BY RAND() LIMIT 4',
+      [product[0].category, slug]
+    );
+
+    const products = rows.map(p => {
+      let images = [];
+      if (typeof p.product_images === 'string') {
+        try {
+          images = JSON.parse(p.product_images);
+        } catch (e) {
+          images = [];
+        }
+      } else if (Array.isArray(p.product_images)) {
+        images = p.product_images;
+      }
+      return {
+        ...p,
+        product_images: images
+      };
+    });
+
+    res.json({ success: true, data: products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const getAllProducts = async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM products ORDER BY created_at DESC');
@@ -455,6 +492,7 @@ module.exports = {
   getAllProducts,
   getProductById,
   getProductBySlug,
+  getRelatedProducts,
   updateProduct,
   deleteProduct
 };
