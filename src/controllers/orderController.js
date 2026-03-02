@@ -213,7 +213,7 @@ exports.createOrder = async (req, res) => {
       title: 'Order Placed Successfully',
       message: `Your order ${orderNumber} has been placed. Total amount: Rs ${total}.`,
       priority: 'medium',
-      link: '/dashboard/user-dashboard/orders'
+      link: '/user-dashboard/orders'
     });
 
     res.status(201).json({ success: true, orderId, orderNumber });

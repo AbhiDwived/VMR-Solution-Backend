@@ -40,3 +40,27 @@ exports.getProductReviews = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch reviews' });
   }
 };
+
+exports.getUserReviews = async (req, res) => {
+  try {
+    const user_id = req.user?.id;
+
+    if (!user_id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const [reviews] = await db.query(
+      `SELECT r.*, p.name as product_name, p.images as product_image
+       FROM reviews r 
+       LEFT JOIN products p ON r.product_id = p.id 
+       WHERE r.user_id = ? 
+       ORDER BY r.created_at DESC`,
+      [user_id]
+    );
+
+    res.json(reviews);
+  } catch (error) {
+    console.error('Error fetching user reviews:', error);
+    res.status(500).json({ message: 'Failed to fetch reviews' });
+  }
+};

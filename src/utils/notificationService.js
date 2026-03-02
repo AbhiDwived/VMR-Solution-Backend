@@ -17,7 +17,7 @@ const notifyLowStock = async (productName, stockQuantity) => {
     title: 'Low Stock Alert',
     message: `${productName} is running low on stock. Current quantity: ${stockQuantity}`,
     priority: stockQuantity === 0 ? 'critical' : 'high',
-    link: '/dashboard/admin-dashboard/inventory'
+    link: '/admin-dashboard/inventory'
   });
 };
 
@@ -27,7 +27,7 @@ const notifyNewOrder = async (orderId, customerName, total) => {
     title: 'New Order Received',
     message: `New order #${orderId} from ${customerName}. Total: ₹${total}`,
     priority: 'medium',
-    link: `/dashboard/admin-dashboard/orders`
+    link: `/admin-dashboard/orders`
   });
 };
 
@@ -39,7 +39,7 @@ const notifyOrderStatusChange = async (orderId, status, userId = null) => {
     title: 'Order Status Updated',
     message: `Order ${orderNum} status changed to ${status}`,
     priority: 'medium',
-    link: `/dashboard/user-dashboard/orders`
+    link: `/user-dashboard/orders`
   });
 };
 
