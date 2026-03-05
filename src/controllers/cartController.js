@@ -20,13 +20,18 @@ exports.getCart = async (req, res) => {
 
 exports.addToCart = async (req, res) => {
   try {
-    const { product_id, variant_id, quantity } = req.body;
-    await db.query(
-      `INSERT INTO cart (user_id, product_id, variant_id, quantity) 
-       VALUES (?, ?, ?, ?) 
-       ON DUPLICATE KEY UPDATE quantity = quantity + ?`,
-      [req.user.id, product_id, variant_id, quantity, quantity]
-    );
+    const { product_id, variant_id, quantity, replaceQuantity } = req.body;
+    const finalVariantId = variant_id || 'default';
+
+    const query = replaceQuantity
+      ? `INSERT INTO cart (user_id, product_id, variant_id, quantity) 
+         VALUES (?, ?, ?, ?) 
+         ON DUPLICATE KEY UPDATE quantity = ?`
+      : `INSERT INTO cart (user_id, product_id, variant_id, quantity) 
+         VALUES (?, ?, ?, ?) 
+         ON DUPLICATE KEY UPDATE quantity = quantity + ?`;
+
+    await db.query(query, [req.user.id, product_id, finalVariantId, quantity, quantity]);
     res.json({ success: true, message: 'Added to cart' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -37,22 +42,22 @@ exports.updateCart = async (req, res) => {
   try {
     const { id } = req.params;
     const { quantity } = req.body;
-    
+
     console.log('🔄 Update cart request:', { id, quantity, userId: req.user.id });
-    
+
     // First, check if the cart item exists
     const [existing] = await db.query(
       'SELECT * FROM cart WHERE id = ? AND user_id = ?',
       [id, req.user.id]
     );
-    
+
     console.log('🔍 Existing cart item:', existing);
-    
+
     if (existing.length === 0) {
       console.log('❌ Cart item not found - ID:', id, 'User:', req.user.id);
       return res.status(404).json({ success: false, message: 'Cart item not found' });
     }
-    
+
     if (quantity <= 0) {
       const [result] = await db.query('DELETE FROM cart WHERE id = ? AND user_id = ?', [id, req.user.id]);
       console.log('🗑️ Delete result:', result);

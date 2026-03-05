@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS products (
     stock_quantity INT NOT NULL,
     category VARCHAR(255) NOT NULL,
     brand VARCHAR(255),
+    packing_standard VARCHAR(255),
     video_url TEXT,
     type ENUM('own', 'affiliate') DEFAULT 'own',
     affiliate_link TEXT,

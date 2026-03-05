@@ -10,7 +10,7 @@ const processVariants = (productData) => {
         const variantId = `${productData.slug}-${color.replace('#', '')}-${size}`;
 
         // Find matching variant images from the variants array
-        const variantImageSet = productData.variants?.find(v => 
+        const variantImageSet = productData.variants?.find(v =>
           v.color === color && v.size === size
         );
 
@@ -56,11 +56,11 @@ const addProduct = async (req, res) => {
         INSERT INTO products (
           name, slug, description, long_description, materials, care_instructions,
           specifications, additional_info, weight, warranty, admin_email, admin_name,
-          admin_number, price, discount_price, stock_quantity, category, brand,
+          admin_number, price, discount_price, stock_quantity, category, brand, packing_standard,
           video_url, type, affiliate_link, product_images, tags, colors, sizes,
           features, variants, delivery_charges, default_delivery_charge,
           is_featured, is_new_arrival, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
@@ -72,7 +72,7 @@ const addProduct = async (req, res) => {
         productData.adminName || 'Admin User', productData.adminNumber || '1234567890',
         Number(productData.price), Number(productData.discountPrice),
         Number(productData.stockQuantity), productData.category,
-        productData.brand || null, productData.videoUrl || null,
+        productData.brand || null, productData.packingStandard || null, productData.videoUrl || null,
         productData.type || 'own', productData.affiliateLink || null,
         JSON.stringify(productData.productImages || []),
         JSON.stringify(productData.tags || []),
@@ -131,7 +131,7 @@ const getProductById = async (req, res) => {
       }
 
       const product = rows[0];
-      
+
       // Parse JSON fields
       const parseJsonField = (field, fallback = []) => {
         if (!field) return fallback;
@@ -199,7 +199,7 @@ const getProductBySlug = async (req, res) => {
       }
 
       const product = rows[0];
-      
+
       // Parse JSON fields
       const parseJsonField = (field, fallback = []) => {
         if (!field) return fallback;
@@ -256,7 +256,7 @@ const getRelatedProducts = async (req, res) => {
   try {
     const { slug } = req.params;
     const [product] = await db.execute('SELECT category FROM products WHERE slug = ?', [slug]);
-    
+
     if (product.length === 0) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
@@ -324,7 +324,7 @@ const getAllProducts = async (req, res) => {
           tags: parseJsonField(product.tags, []),
           delivery_charges: parseJsonField(product.delivery_charges, []),
         };
-        
+
         return parsedProduct;
       } catch (parseError) {
         console.error('Error parsing JSON fields for product:', product.id, parseError);
@@ -406,7 +406,7 @@ const updateProduct = async (req, res) => {
           care_instructions = ?, specifications = ?, additional_info = ?, weight = ?, 
           warranty = ?, admin_email = ?, admin_name = ?, admin_number = ?,
           price = ?, discount_price = ?, stock_quantity = ?, 
-          category = ?, brand = ?, video_url = ?, type = ?, affiliate_link = ?, 
+          category = ?, brand = ?, packing_standard = ?, video_url = ?, type = ?, affiliate_link = ?, 
           product_images = ?, tags = ?, colors = ?, sizes = ?, features = ?, 
           variants = ?, delivery_charges = ?, default_delivery_charge = ?, 
           is_featured = ?, is_new_arrival = ?, status = ?
@@ -422,7 +422,7 @@ const updateProduct = async (req, res) => {
         productData.adminName || null, productData.adminNumber || null,
         Number(productData.price), Number(productData.discountPrice),
         Number(productData.stockQuantity), productData.category,
-        productData.brand || null, productData.videoUrl || null,
+        productData.brand || null, productData.packingStandard || null, productData.videoUrl || null,
         productData.type || 'own', productData.affiliateLink || null,
         JSON.stringify(productData.productImages || []),
         JSON.stringify(productData.tags || []),
@@ -445,37 +445,20 @@ const updateProduct = async (req, res) => {
           message: 'Product not found'
         });
       }
-      
+
       const responseData = { id, ...productData, variants: processedVariants };
-      
+
       res.status(200).json({
         success: true,
         message: 'Product updated successfully',
         data: responseData
       });
     } catch (dbError) {
-      // Check if it's a connection error
-      if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ER_ACCESS_DENIED_ERROR') {
-        return res.status(500).json({
-          success: false,
-          message: 'Database connection failed. Please check database server.',
-          error: dbError.message
-        });
-      }
-      
-      // Check for constraint violations
-      if (dbError.code === 'ER_DUP_ENTRY') {
-        return res.status(400).json({
-          success: false,
-          message: 'Duplicate entry. Product with this slug may already exist.',
-          error: dbError.message
-        });
-      }
-      
-      res.status(200).json({
-        success: true,
-        message: 'Product updated (memory fallback)',
-        data: { id, ...productData, variants: processedVariants }
+      console.error('Database update error:', dbError);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save to database: ' + dbError.message,
+        error: dbError
       });
     }
   } catch (error) {
