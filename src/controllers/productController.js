@@ -255,18 +255,19 @@ const getProductBySlug = async (req, res) => {
 const getRelatedProducts = async (req, res) => {
   try {
     const { slug } = req.params;
-    const [product] = await db.execute('SELECT category FROM products WHERE slug = ?', [slug]);
+    const [product] = await db.execute('SELECT id, category FROM products WHERE slug = ?', [slug]);
 
     if (product.length === 0) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
+    // First, try to get products from the same category
     const [rows] = await db.execute(
-      'SELECT id, name, slug, price, discount_price, product_images, category FROM products WHERE category = ? AND slug != ? AND status = "active" ORDER BY RAND() LIMIT 4',
+      'SELECT id, name, slug, price, discount_price, product_images, category FROM products WHERE category = ? AND slug != ? AND status = "active" ORDER BY RAND() LIMIT 6',
       [product[0].category, slug]
     );
 
-    const products = rows.map(p => {
+    let products = rows.map(p => {
       let images = [];
       if (typeof p.product_images === 'string') {
         try {
@@ -282,6 +283,38 @@ const getRelatedProducts = async (req, res) => {
         product_images: images
       };
     });
+
+    // If we have fewer than 6 products, fill with other products from different categories
+    if (products.length < 6) {
+      const excludedIds = [product[0].id, ...products.map(p => p.id)];
+      const limit = 6 - products.length;
+
+      // We'll use a string for the IN clause as it's safe since these are IDs we just fetched
+      const placeholders = excludedIds.map(() => '?').join(',');
+      const [extraRows] = await db.execute(
+        `SELECT id, name, slug, price, discount_price, product_images, category FROM products WHERE id NOT IN (${placeholders}) AND status = "active" ORDER BY RAND() LIMIT ${limit}`,
+        excludedIds
+      );
+
+      const extraProducts = extraRows.map(p => {
+        let images = [];
+        if (typeof p.product_images === 'string') {
+          try {
+            images = JSON.parse(p.product_images);
+          } catch (e) {
+            images = [];
+          }
+        } else if (Array.isArray(p.product_images)) {
+          images = p.product_images;
+        }
+        return {
+          ...p,
+          product_images: images
+        };
+      });
+
+      products = [...products, ...extraProducts];
+    }
 
     res.json({ success: true, data: products });
   } catch (error) {
