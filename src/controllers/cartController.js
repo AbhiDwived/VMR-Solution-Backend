@@ -3,7 +3,7 @@ const db = require('../config/db');
 exports.getCart = async (req, res) => {
   try {
     const [items] = await db.query(
-      `SELECT c.*, p.name, p.price, p.discount_price, p.product_images, p.variants 
+      `SELECT c.*, p.name, p.price, p.discount_price, p.product_images, p.variants, p.packing_standard 
        FROM cart c 
        JOIN products p ON c.product_id = p.id 
        WHERE c.user_id = ?`,
