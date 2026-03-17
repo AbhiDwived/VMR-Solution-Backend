@@ -4,7 +4,7 @@ const db = require('../config/db');
 exports.getAllBlogs = async (req, res) => {
     try {
         const { status } = req.query;
-        let query = 'SELECT b.*, u.full_name as author FROM blogs b JOIN users u ON b.author_id = u.id';
+        let query = 'SELECT b.*, u.full_name as author FROM blogs b LEFT JOIN users u ON b.author_id = u.id';
         const params = [];
         
         if (status) {
@@ -20,12 +20,32 @@ exports.getAllBlogs = async (req, res) => {
     }
 };
 
-// Get single blog
+// Get single blog by slug
+exports.getBlogBySlug = async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const [blogs] = await db.query(
+            'SELECT b.*, u.full_name as author FROM blogs b LEFT JOIN users u ON b.author_id = u.id WHERE b.slug = ?',
+            [slug]
+        );
+        
+        if (blogs.length === 0) {
+            return res.status(404).json({ message: 'Blog not found' });
+        }
+        
+        await db.query('UPDATE blogs SET views = views + 1 WHERE id = ?', [blogs[0].id]);
+        res.json({ blog: blogs[0] });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Get single blog by id
 exports.getBlog = async (req, res) => {
     try {
         const { id } = req.params;
         const [blogs] = await db.query(
-            'SELECT b.*, u.full_name as author FROM blogs b JOIN users u ON b.author_id = u.id WHERE b.id = ?',
+            'SELECT b.*, u.full_name as author FROM blogs b LEFT JOIN users u ON b.author_id = u.id WHERE b.id = ?',
             [id]
         );
         
@@ -68,16 +88,16 @@ exports.updateBlog = async (req, res) => {
         const updates = [];
         const params = [];
         
-        if (title) {
+        if (title !== undefined) {
             updates.push('title = ?', 'slug = ?');
             const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
             params.push(title, slug);
         }
-        if (excerpt) { updates.push('excerpt = ?'); params.push(excerpt); }
-        if (content) { updates.push('content = ?'); params.push(content); }
-        if (category) { updates.push('category = ?'); params.push(category); }
-        if (status) { updates.push('status = ?'); params.push(status); }
-        if (image) { updates.push('image = ?'); params.push(image); }
+        if (excerpt !== undefined) { updates.push('excerpt = ?'); params.push(excerpt); }
+        if (content !== undefined) { updates.push('content = ?'); params.push(content); }
+        if (category !== undefined) { updates.push('category = ?'); params.push(category); }
+        if (status !== undefined) { updates.push('status = ?'); params.push(status); }
+        if (image !== undefined) { updates.push('image = ?'); params.push(image); }
         
         params.push(id);
         await db.query(`UPDATE blogs SET ${updates.join(', ')} WHERE id = ?`, params);
